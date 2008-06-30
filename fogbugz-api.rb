@@ -16,7 +16,7 @@ class Hash
     return_value = Array.new
 
     self.each do |key,value|
-      return_value << key + "=" + value.gsub(" ","%20")
+      return_value << key + "=" + value.to_s.gsub(" ","%20") 
     end
 
     return return_value.join("&")
@@ -29,26 +29,75 @@ class FogBugz
 
   API_VERSION = 5
 
+  # This is an array of all possible values
+  # that can be returned on a case.  For 
+  # methods that ask for cols wanted for a case
+  # this array will be used if their is nothing
+  # else specified.
   CASE_COLUMNS = ["ixBug",
                   "fOpen",
                   "sTitle",
                   "sLatestTextSummary",
-                  "ixBugEventLatestText"]
+                  "ixBugEventLatestText",
+                  "ixProject",
+                  "sProject",
+                  "ixArea",
+                  "sArea",
+                  "ixGroup",
+                  "ixPersonAssignedTo",
+                  "sPersonAssignedTo",
+                  "sEmailAssignedTo",
+                  "ixPersonOpenedBy",
+                  "ixPersonResolvedBy",
+                  "ixPersonClosedBy",
+                  "ixPersonLastEditedBy",
+                  "ixStatus",
+                  "sStatus",
+                  "ixPriority",
+                  "sPriority",
+                  "ixFixFor",
+                  "sFixFor",
+                  "dtFixFor",
+                  "sVersion",
+                  "sComputer",
+                  "hrsOrigEst",
+                  "hrsCurrEst",
+                  "hrsElapsed",
+                  "c",
+                  "sCustomerEmail",
+                  "ixMailbox",
+                  "ixCategory",
+                  "sCategory",
+                  "dtOpened",
+                  "dtResolved",
+                  "dtClosed",
+                  "ixBugEventLatest",
+                  "dtLastUpdated",
+                  "fReplied",
+                  "fForwarded",
+                  "sTicket",
+                  "ixDiscussTopic",
+                  "dtDue",
+                  "sReleaseNotes",
+                  "ixBugEventLastView",
+                  "dtLastView",
+                  "ixRelatedBugs",
+                  "sScoutDescription",
+                  "sScoutMessage",
+                  "fScoutStopReporting",
+                  "fSubscribed",
+                  "events"]
 
   attr_reader   :url,
                 :token,
                 :use_ssl,
                 :api_version,
                 :api_minversion,
-                :api_url, 
-                :connection
-  #DEBUG - remove connection from reader list
+                :api_url
 
   # BASIC STUFF
 
-  def initialize(url,use_ssl=false,email=nil,password=nil,token=nil)
-
-    @token = ""
+  def initialize(url,use_ssl=false,token=nil)
 
     @url = url
     @use_ssl = use_ssl
@@ -67,9 +116,6 @@ class FogBugz
     raise FogBugzError, "API version mismatch" if (API_VERSION < @api_minversion)
 
     @token = token ? token : ""
-
-    # call logon if email/password present and no token
-    logon(email,password) if (email and password and not token)
 
   end # def initialize
 
@@ -312,7 +358,16 @@ class FogBugz
 
     result = Hpricot.XML(@connection.post(@api_url,cmd.to_params).body)
 
-    return list_process(result,"case","ixBug")
+    return_value = list_process(result,"case","ixBug")
+
+    # if one of the returned cols = events, then process 
+    # this list and replace its spot in the Hash
+    # with this instead of a string of XML
+    return_value.each do |key,value|
+      return_value[key]["events"] = list_process(Hpricot.XML(return_value[key]["events"]),"event","ixBugEvent") if return_value[key].has_key?("events")
+    end
+
+    return_value
 
   end # def search
 
@@ -322,18 +377,34 @@ class FogBugz
   # cols -> columns to be returned about the new case.  if not passed will
   #         use constant list (all) provided with Class
   def new_case(params,cols=CASE_COLUMNS)
+    
+    case_process("new",params,cols)
+
+  end # def new_case
+
+  def case_process(cmd,params,cols)
     cmd = {
-      "cmd" => "new",
+      "cmd" => cmd,
       "token" => @token,
       "cols" => cols.join(",")
     }.merge(params)
 
     result = Hpricot.XML(@connection.post(@api_url, cmd.to_params).body)
-    return list_process(result,"case","ixBug")
 
-  end # def new_case
+    return_value = list_process(result,"case","ixBug")
 
-  protected
+    # if one of the returned cols = events, then process 
+    # this list and replace its spot in the Hash
+    # with this instead of a string of XML
+    return_value.each do |key,value|
+      return_value[key]["events"] = list_process(Hpricot.XML(return_value[key]["events"]),"event","ixBugEvent") if return_value[key].has_key?("events")
+    end
+
+    return_value
+
+  end # def case_process
+
+  #DEBUG - add protected here
   def list_process(xml,element,element_name)
     # xml => XML to process
     # element => individual elements within the XML to create Hashes for within the returned value
@@ -392,7 +463,7 @@ class FogBugz
       item.each_child do |attribute|
         return_value[item_name][attribute.name] = attribute.inner_html
         # convert values to proper types
-        return_value[item_name][attribute.name] = /<!\[CDATA\[(.*?)\]\]>/.match(attribute.inner_html)[1] if (attribute.name[0,1] == "s") and (attribute.inner_html != "") and /<!\[CDATA\[(.*?)\]\]>/.match(attribute.inner_html) != nil
+        return_value[item_name][attribute.name] = /<!\[CDATA\[(.*?)\]\]>/.match(attribute.inner_html)[1] if (attribute.name[0,1] == "s" or attribute.name[0,3] == "evt") and (attribute.inner_html != "") and /<!\[CDATA\[(.*?)\]\]>/.match(attribute.inner_html) != nil
         return_value[item_name][attribute.name] = return_value[item_name][attribute.name].to_i if (attribute.name[0,2] == "ix" or attribute.name[0,1] == "n")
         return_value[item_name][attribute.name] = (return_value[item_name][attribute.name] == "true") ? true : false if attribute.name[0,1] == "f"
 
