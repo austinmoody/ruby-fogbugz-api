@@ -400,7 +400,7 @@ class FogBugz
       return_value[key]["events"] = list_process(Hpricot.XML(return_value[key]["events"]),"event","ixBugEvent") if return_value[key].has_key?("events")
     end
 
-    return_value
+    return_value[return_value.keys[0]]
 
   end # def case_process
 

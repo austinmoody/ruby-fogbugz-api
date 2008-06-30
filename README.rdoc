@@ -1,0 +1,28 @@
+= Ruby FogBugz API Wrapper
+
+My attempt at creating a wrapper for the FogBugz API in Ruby.  
+
+More about FogBugz: http://www.fogbugz.com
+More about FogBugz API: http://www.fogcreek.com/FogBugz/docs/60/topics/advanced/API.html
+
+This is very much a work in progress.  Any questions, concerns, or if you want to help out please e-mail me: austin.moody@gmail.com
+
+== Installation
+
+GEM coming soon hopefully.  For now nab the fogbugz-api.rb file and require in your Ruby script.
+
+== Requirements
+
+* Hpricot (http://code.whytheluckystiff.net/hpricot/)
+* net/https
+* A login to a FogBugz server
+
+== Example Usage
+
+	fb = FogBugz.new("my.fogbugz.com",true)
+	
+	fb.logon("me@email.com","mypassword")
+	
+	case_search = fb.search("API errors")
+	
+	fb.logoff

@@ -1,6 +1,0 @@
-My attempt at creating a wrapper for the FogBugz API in Ruby.  
-
-More about FogBugz: http://www.fogbugz.com
-More about FogBugz API: http://www.fogcreek.com/FogBugz/docs/60/topics/advanced/API.html
-
-This is very much a work in progress.  Any questions, concerns, or if you want to help out please e-mail me: austin.moody@gmail.com
