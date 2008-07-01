@@ -2,6 +2,7 @@
 # TODO
 # 1. If API mismatch... destroy Object?
 
+# class Hash - adding to_params
 class Hash
   # Adding a to_params method to
   # Hash so that I can easily convert
@@ -15,7 +16,6 @@ class Hash
     return_value = Array.new
 
     self.each do |key,value|
-      #return_value << key + "=" + value.to_s.gsub(" ","%20").gsub("\n","%0a") 
       return_value << key + "=" + CGI.escape(value.to_s)
     end
 
@@ -25,8 +25,12 @@ end # class Hash
 
 class FogBugzError < StandardError; end
 
+# FogBugz class
 class FogBugz
 
+  # Version of the FogBuz API this was written for.  If the minversion
+  # returned by FogBugz is greater than this value this library will
+  # not function.
   API_VERSION = 5
 
   # This is an array of all possible values
@@ -95,8 +99,20 @@ class FogBugz
                 :api_minversion,
                 :api_url
 
-  # BASIC STUFF
-
+  # Creates an instance of the FogBugz class.  
+  # 
+  # * url -> URL to your FogBugz installation.  URL only as in my.fogbugz.com without the http or https.
+  # * use_ssl -> Does this server use SSL?  true/false
+  # * token -> Already have a token for the server?  You can provide that here.
+  #
+  # Connects to the specified FogBugz installation and grabs the api.xml file to get other information such as API version, API minimum version, and the API endpoint.
+  # Also sets http/https connection to the server and sets the token if provided.
+  # FogBugzError will be raise if the minimum API version returned by FogBugz is greater than API_VERSION of this class.
+  #
+  # Example Usage:
+  #
+  # fb = FogBugz.new("my.fogbugz.com",true)
+  #
   def initialize(url,use_ssl=false,token=nil)
 
     @url = url
@@ -119,12 +135,9 @@ class FogBugz
 
   end # def initialize
 
-  def connect
-    @connection = Net::HTTP.new(@url, @use_ssl ? 443 : 80) 
-    @connection.use_ssl = @use_ssl
-    @connection.verify_mode = OpenSSL::SSL::VERIFY_NONE if @use_ssl
-  end # def connect
-
+  # Validates a user with FogBugz.  Saves the returned token for use with other commands.
+  #
+  # If a token was already specified with new it will be overwritten with the token picked up by a successful authentication.
   def logon(email,password)
     cmd = {"cmd" => "logon",
               "email" => email,
@@ -208,6 +221,7 @@ class FogBugz
   end # def listProjects
 
   # retuns integer, which is ixProject for the project created
+  # TODO - change to accept Has of parameters?
   def newProject(sProject,ixPersonPrimaryContact,fAllowPublicSubmit,ixGroup,fInbox)
 
     # I would have thought that the fAllowPublicSubmit would have been
@@ -332,27 +346,21 @@ class FogBugz
     return list_process(result,"mailbox","ixMailbox")
   end # def listMailboxes
 
-  # --------------#
-  #     CASES     #
-  # --------------#
-  def search(q,cols=nil,max=nil)
-    # assuming cols is passed as an Array
+  # search - searches for FogBugz cases
+  #
+  # * q => query for searching.  Should hopefully work just like the Search box within the FogBugz application.
+  # * cols => Columns of information to be returned for each case found.  Consult FogBugz API documentation for a list.  If this is not specified the CASE_COLUMNS will be used.  This will request every possible datapoint (as of API version 5) for each case.
+  # * max => maximum number of cases to be returned for your search.  Will return all if not specified.
+  def search(q,cols=CASE_COLUMNS,max=nil)
     # TODO - shoudl I worry about the "operations" returned
     # in the <case>?
     
     cmd = {
       "cmd" => "search",
       "token" => @token,
-      "q" => q
+      "q" => q,
+      "cols" => cols.join(",")
     }
-
-    if cols
-      # user has specified a list of columns they want to see
-      cmd = {"cols" => cols.join(",")}.merge(cmd)
-    else
-      # use the built in CASE_COLUMNS
-      cmd = {"cols" => CASE_COLUMNS.join(",")}.merge(cmd)
-    end 
 
     cmd = {"max" => max}.merge(cmd) if max
 
@@ -371,16 +379,24 @@ class FogBugz
 
   end # def search
 
-  # Creates a new FogBugz case.  
-  # params -> must be a hash keyed with values from
-  #           the FogBugz API docs.  sTitle, ixProject (or sProject), etc...
-  # cols -> columns to be returned about the new case.  if not passed will
-  #         use constant list (all) provided with Class
-  def new_case(params,cols=CASE_COLUMNS)
+  # Creates a FogBugz case.  
+  # * params -> must be a hash keyed with values from the FogBugz API docs.  sTitle, ixProject (or sProject), etc...
+  # * cols -> columns to be returned about the case which gets created.  Ff not passed will use constant list (all) provided with Class
+  def newCase(params,cols=CASE_COLUMNS)
     
     case_process("new",params,cols)
 
-  end # def new_case
+  end # def newCase
+
+  protected
+  # Makes connection to the FogBugz server
+  #
+  # Assumes port 443 for SSL connections and 80 for non-SSL connections.  Possibly should provide a way to override this.
+  def connect
+    @connection = Net::HTTP.new(@url, @use_ssl ? 443 : 80) 
+    @connection.use_ssl = @use_ssl
+    @connection.verify_mode = OpenSSL::SSL::VERIFY_NONE if @use_ssl
+  end # def connect
 
   def case_process(cmd,params,cols)
     cmd = {
@@ -404,11 +420,13 @@ class FogBugz
 
   end # def case_process
 
-  #DEBUG - add protected here
-  def list_process(xml,element,element_name)
-    # xml => XML to process
-    # element => individual elements within the XML to create Hashes for within the returned value
-    # element_name => key for each individual Hash within the return value.
+  # list_process
+  #
+  # method used by other list methods to process the XML returned by FogBugz API.
+  #
+    # * xml => XML to process
+    # * element => individual elements within the XML to create Hashes for within the returned value
+    # * element_name => key for each individual Hash within the return value.
     #
     # EXAMPLE XML
     #<response>
@@ -451,6 +469,7 @@ class FogBugz
     #               "fIsScheduleItem" => false
     #           }
     # }
+  def list_process(xml,element,element_name)
     return_value = Hash.new
     (xml/"#{element}").each do |item|
       if element_name[0,1] == "s"
