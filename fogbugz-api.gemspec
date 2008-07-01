@@ -14,5 +14,5 @@ Gem::Specification.new do |s|
   s.rdoc_options << "--inline-source"
   s.add_dependency "hpricot", [">= 0.6"]
 
-  s.files = %w(README.rdoc fogbugz-api.rb)
+  s.files = %w(README.rdoc fogbugz-api.rb lib)
 end
