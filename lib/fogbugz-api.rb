@@ -1,5 +1,4 @@
-%w(hpricot net/https).each { |f| require f }
-
+%w(hpricot net/https cgi).each { |f| require f }
 # TODO
 # 1. If API mismatch... destroy Object?
 
@@ -16,7 +15,8 @@ class Hash
     return_value = Array.new
 
     self.each do |key,value|
-      return_value << key + "=" + value.to_s.gsub(" ","%20") 
+      #return_value << key + "=" + value.to_s.gsub(" ","%20").gsub("\n","%0a") 
+      return_value << key + "=" + CGI.escape(value.to_s)
     end
 
     return return_value.join("&")
