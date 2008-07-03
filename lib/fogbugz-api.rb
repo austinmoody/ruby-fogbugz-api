@@ -167,7 +167,7 @@ class FogBugz
     return list_process(result,"category","sCategory")
   end
 
-  def listPriorities
+  def priorities
     cmd = {"cmd" => "listPriorities", "token" => @token}
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return list_process(result,"priority","sPriority")
@@ -236,7 +236,8 @@ class FogBugz
       "cmd" => "search",
       "token" => @token,
       "q" => q,
-      "cols" => cols.join(",")
+      # ixBug is the key for the hash returned so I'm adding it to the cols array just in case
+      "cols" => (cols + ["ixBug"]).join(",")
     }
     cmd = {"max" => max}.merge(cmd) if max
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
