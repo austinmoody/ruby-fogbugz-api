@@ -1,28 +1,36 @@
 = Ruby FogBugz API Wrapper
 
-My attempt at creating a wrapper for the FogBugz API in Ruby.  
+An attempt at creating a wrapper for the FogBugz API in Ruby.
 
-More about FogBugz: http://www.fogbugz.com
-More about FogBugz API: http://www.fogcreek.com/FogBugz/docs/60/topics/advanced/API.html
+FogBugz: http://www.fogbugz.com/
+FogBugz API Docs: http://www.fogcreek.com/FogBugz/docs/60/topics/advanced/API.html
 
-This is very much a work in progress.  Any questions, concerns, or if you want to help out please e-mail me: austin.moody@gmail.com
+This is very much a work in progress. I needed to scratch an itch with an internal project and started on this. There are many functions of the API which are not yet implemented as a result. Please check the code to see what is done and what is not.
+
+If you want to help out please e-mail Austin (austin.moody@gmail.com) and he can add you as a collaborator.
 
 == Installation
 
-GEM coming soon hopefully.  For now nab the fogbugz-api.rb file and require in your Ruby script.
+You can install the gem from github.com by using these commands:
+
+gem sources -a http://gems.github.com
+sudo gem install austinmoody-fogbugz-api
 
 == Requirements
 
 * Hpricot (http://code.whytheluckystiff.net/hpricot/)
-* net/https
 * A login to a FogBugz server
 
 == Example Usage
 
-	fb = FogBugz.new("my.fogbugz.com",true)
-	
-	fb.logon("me@email.com","mypassword")
-	
-	case_search = fb.search("API errors")
-	
-	fb.logoff
+fb = FogBugz.new("my.fogbugzserver.com",true) # create instance
+
+fb.logon("mylogin","mypassword") # logs into FogBugz and sets token
+
+mycases = fb.search("AssignedTo:\"Austin Moody\"") # search terms just as in FogBugz
+
+projects = fb.projects # get a list of projects
+
+fb.logoff # logout
+
+See the code and potentially the wiki at github.com for more information.
