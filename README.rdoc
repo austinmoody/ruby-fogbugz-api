@@ -3,6 +3,7 @@
 An attempt at creating a wrapper for the FogBugz API in Ruby.
 
 FogBugz: http://www.fogbugz.com/
+
 FogBugz API Docs: http://www.fogcreek.com/FogBugz/docs/60/topics/advanced/API.html
 
 This is very much a work in progress. I needed to scratch an itch with an internal project and started on this. There are many functions of the API which are not yet implemented as a result. Please check the code to see what is done and what is not.
@@ -14,6 +15,7 @@ If you want to help out please e-mail Austin (austin.moody@gmail.com) and he can
 You can install the gem from github.com by using these commands:
 
 gem sources -a http://gems.github.com
+
 sudo gem install austinmoody-fogbugz-api
 
 == Requirements
