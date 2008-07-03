@@ -300,6 +300,13 @@ class FogBugz
     return list_process(result,"priority","sPriority")
   end # def listPriorities
 
+  # listPeople
+  #
+  # Returns list of people in corresponding categories.  
+  #
+  # * fIncludeNormal => Only include Normal users.  If no options specified, fIncludeNormal=1 is assumed.
+  # * fIncludeCommunity => true/false Will include Community users in return.
+  # * fIncludeVirtual => true/false Will include Virtual users in return.
   def listPeople(fIncludeNormal="1",fIncludeCommunity=nil,fIncludeVirtual=nil)
 
     cmd = {
@@ -317,6 +324,12 @@ class FogBugz
 
   end # def listPeople
 
+  # listStatuses
+  #
+  # Returns a list of statuses for a particular category.
+  #
+  # * ixCategory => category to return statuses for.  If not specified, then all are returned.
+  # * fResolved => If = 1 then only resolved statuses are returned.
   def listStatuses(ixCategory=nil,fResolved=nil)
 
     cmd = {
@@ -333,6 +346,9 @@ class FogBugz
 
   end # def listStatuses
 
+  # listMailboxes
+  #
+  # Returns a list of mailboxes that you have access to.
   def listMailboxes
     cmd = {
       "cmd" => "listMailboxes",

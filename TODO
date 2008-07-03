@@ -1,0 +1,4 @@
+== FogBugz API Todo
+
+* Finish it!  At the moment it is very incomplete.  Pretty much just the list functions, search, and newCase.  
+* Create tests and make sure they work.
