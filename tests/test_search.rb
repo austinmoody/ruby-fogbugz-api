@@ -1,4 +1,5 @@
-require '../fogbugz-api'
+require 'rubygems' rescue nil
+require File.join(File.dirname(__FILE__), '..', 'lib', 'fogbugz-api')
 require 'yaml'
 
 fb = FogBugz.new(ARGV[0],ARGV[1])
