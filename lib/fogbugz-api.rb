@@ -117,8 +117,8 @@ class FogBugz
   def projects(fWrite=false, ixProject=nil)
     return_value = Hash.new
     cmd = {"cmd" => "listProjects", "token" => @token}
-    {"fWrite"=>"1"}.merge(cmd) if fWrite
-    {"ixProject"=>ixProject}.merge(cmd) if ixProject
+    cmd = {"fWrite"=>"1"}.merge(cmd) if fWrite
+    cmd = {"ixProject"=>ixProject}.merge(cmd) if ixProject
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return list_process(result,"project","sProject")
   end
@@ -142,6 +142,21 @@ class FogBugz
     return (result/"ixProject").inner_html.to_i
   end
 
+  # Returns details about a specific project.  
+  # 
+  # * project: Either the id (ixProject) or the name (sProject).  
+  #
+  # Value returned is a Hash containing all properties of the located project.  nil is returned for unsuccessful search.
+  def project(project=nil)
+    return nil if not project
+    cmd = {"cmd" => "viewProject", "token" => @token}
+    cmd = {"ixProject" => project.to_s}.merge(cmd) if project.class == Fixnum
+    cmd = {"sProject" => project}.merge(cmd) if project.class == String
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value =  list_process(result,"project","sProject")
+    return_value[return_value.keys[0]]
+  end
+
   def areas(fWrite=false, ixProject=nil, ixArea=nil)
     return_value = Hash.new
     cmd = {"cmd" => "listAreas", "token" => @token}
@@ -152,6 +167,23 @@ class FogBugz
     return list_process(result,"area","sArea")
   end
 
+  # Returns details about a specific area
+  #
+  # * area: Either the id of an area (ixArea) or the name of an area (sArea).  If passing name, then the ID of the project the area belongs to needs to be passed.
+  # * ixProject: ID of a project which contains specific area.  Needed if wanting details for area by name.
+  #
+  # Value returned is a Hash of containing all properties of the located area.  nil is returned for unsuccessful search.
+  def area(area=nil,ixProject=nil)
+    return nil if not area
+    cmd = {"cmd" => "viewArea", "token" => @token}
+    cmd = {"ixArea" => area.to_s}.merge(cmd) if area.class == Fixnum
+    cmd = {"sArea" => area}.merge(cmd) if area.class == String
+    cmd = {"ixProject" => ixProject.to_s}.merge(cmd) if ixProject
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value = list_process(result,"area","sArea")
+    return_value[return_value.keys[0]]
+  end
+
   def fix_fors(ixProject=nil,ixFixFor=nil)
     return_value = Hash.new
     cmd = {"cmd" => "listFixFors", "token" => @token}
@@ -159,6 +191,23 @@ class FogBugz
     {"ixFixFor" => ixFixFor}.merge(cmd) if ixFixFor
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return list_process(result,"fixfor","sFixFor")
+  end
+
+  # Returns details about a specific Fix For (releases)
+  #
+  # * fix_for: Either the id of a Fix For (ixFixFor) or the name of a Fix For (sFixFor).  If passing name, then the ID of the project the area belongs to needs to be passed.
+  # * ixProject: ID of a project which contains specific Fix For.  Needed if wanting details for Fix For by name.
+  #
+  # Value returned is a Hash of containing all properties of the located Fix For.  nil is returned for unsuccessful search.
+  def fix_for(fix_for=nil,ixProject=nil)
+    return nil if not fix_for
+    cmd = {"cmd" => "viewFixFor", "token" => @token}
+    cmd = {"ixFixFor" => fix_for.to_s}.merge(cmd) if fix_for.class == Fixnum
+    cmd = {"sFixFor" => fix_for}.merge(cmd) if fix_for.class == String
+    cmd = {"ixProject" => ixProject.to_s}.merge(cmd) if ixProject
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value = list_process(result,"fixfor","sFixFor")
+    return_value[return_value.keys[0]]
   end
 
   def categories
@@ -189,6 +238,24 @@ class FogBugz
     cmd = {"fIncludeVirtual" => "1"}.merge(cmd) if fIncludeVirtual
     result = Hpricot.XML(@connection.post(@api_url, to_params(cmd)).body)
     return list_process(result,"person","sFullName")
+  end
+
+  # Returns details for a specific FogBugz user.  Can search by person's ID or their email address.
+  #
+  # * ixPerson: ID for the person to display
+  # * sEmail: Email address for the person to display.
+  #
+  # Note: If you specify both, Email search seems to take precedence. 
+  #
+  # Value returned is a Hash of containing all properties of the located person.  nil is returned for unsuccessful search.
+  def person(ixPerson=nil,sEmail=nil)
+    return nil if not ixPerson || sEmail
+    cmd = {"cmd" => "viewPerson", "token" => @token}
+    cmd = {"ixPerson" => ixPerson.to_s}.merge(cmd) if ixPerson
+    cmd = {"sEmail" => sEmail}.merge(cmd) if sEmail
+    result = Hpricot.XML(@connection.post(@api_url, to_params(cmd)).body)
+    return_value = list_process(result,"person","sFullName")
+    return_value[return_value.keys[0]]
   end
 
   # Returns a list of statuses for a particular category.
