@@ -56,7 +56,7 @@ class FogBugz
     result = Hpricot.XML(@connection.get("/api.xml").body)
 
     @api_version = (result/"version").inner_html.to_i
-    @api_minversion = (result/"version").inner_html.to_i
+    @api_minversion = (result/"minversion").inner_html.to_i
     @api_url = "/" + (result/"url").inner_html
 
     # Make sure this class will work w/ API version
@@ -198,8 +198,8 @@ class FogBugz
   # * fix_for: Either the id of a Fix For (ixFixFor) or the name of a Fix For (sFixFor).  If passing name, then the ID of the project the area belongs to needs to be passed.
   # * ixProject: ID of a project which contains specific Fix For.  Needed if wanting details for Fix For by name.
   #
-  # Value returned is a Hash of containing all properties of the located Fix For.  nil is returned for unsuccessful search.
-  def fix_for(fix_for=nil,ixProject=nil)
+  # Value returned is a Hash containing all properties of the located Fix For.  nil is returned for unsuccessful search.
+  def fix_for(fix_for,ixProject=nil)
     return nil if not fix_for
     cmd = {"cmd" => "viewFixFor", "token" => @token}
     cmd = {"ixFixFor" => fix_for.to_s}.merge(cmd) if fix_for.class == Fixnum
@@ -215,11 +215,35 @@ class FogBugz
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return list_process(result,"category","sCategory")
   end
+  
+  # Returns details about a specific Category
+  #
+  # * ixCategory: The id of the Category to view.
+  # 
+  # Value returned is a Hash containing all properties of the located Category.  nil is returned for unsucessful search.
+  def category(ixCategory)
+    cmd = {"cmd" => "viewCategory", "token" => @token, "ixCategory" => ixCategory.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value = list_process(result,"category","sCategory")
+    return_value[return_value.keys[0]]    
+  end
 
   def priorities
     cmd = {"cmd" => "listPriorities", "token" => @token}
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return list_process(result,"priority","sPriority")
+  end
+  
+  # Returns details about a specific priority
+  #
+  # * ixPriority: The id of the Priority to view
+  # 
+  # Value returned is a Hash containing all properties of the located Priority.  nil is returned for unsuccessful search.
+  def priority(ixPriority)
+    cmd = {"cmd" => "viewPriority", "token" => @token, "ixPriority" => ixPriority.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value = list_process(result,"priority","sPriority")
+    return_value[return_value.keys[0]]        
   end
 
   # Returns list of people in corresponding categories.  
@@ -273,6 +297,18 @@ class FogBugz
     return list_process(result,"status","sStatus")
   end
 
+  # Returns details about a specific status
+  #
+  # * ixStatus: The id of the Status to view
+  # 
+  # Value returned is a Hash containing all properties of the located Status.  nil is returned for unsuccessful search.  
+  def status(ixStatus)
+    cmd = {"cmd" => "viewStatus", "token" => @token, "ixStatus" => ixStatus.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value = list_process(result,"status","sStatus")
+    return_value[return_value.keys[0]]            
+  end
+
   # Returns a list of mailboxes that you have access to.
   def mailboxes
     cmd = {
@@ -299,13 +335,9 @@ class FogBugz
     # TODO - shoudl I worry about the "operations" returned
     # in the <case>?
     
-    cmd = {
-      "cmd" => "search",
-      "token" => @token,
-      "q" => q,
-      # ixBug is the key for the hash returned so I'm adding it to the cols array just in case
-      "cols" => (cols + ["ixBug"]).join(",")
-    }
+    cmd = {"cmd" => "search","token" => @token,"q" => q, "cols" => cols.join(",")}
+    # ixBug is the key for the hash returned so I'm adding it to the cols array just in case
+    cmd = {"cols" => (cols + ["ixBug"])}.merge(cmd) if not cols.include?("ixBug")
     cmd = {"max" => max}.merge(cmd) if max
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return_value = list_process(result,"case","ixBug")
