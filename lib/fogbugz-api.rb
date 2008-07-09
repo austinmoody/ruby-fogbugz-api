@@ -2,6 +2,7 @@ require 'rubygems' rescue nil
 require 'hpricot'
 require 'net/https'
 require 'cgi'
+require 'date'
 
 class FogBugzError < StandardError; end
 
@@ -166,6 +167,17 @@ class FogBugz
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return list_process(result,"area","sArea")
   end
+  
+  # Creates a new area within a specific project
+  #
+  # * ixProject: ID of the project to contain the new area.
+  # * sArea: Title of the new area.
+  # * ixPersonPrimaryContact: ID of the person who will be the primary contact for this area.  -1 will set to the Project's primary contact, which is the default if not specified.
+  def new_area(ixProject,sArea,ixPersonPrimaryContact=-1)
+    cmd = {"cmd" => "newArea", "token" => @token, "ixProject" => ixProject.to_s, "sArea" => sArea.to_s, "ixPersonPrimaryContact" => ixPersonPrimaryContact.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return (result/"ixArea").inner_html.to_i    
+  end
 
   # Returns details about a specific area
   #
@@ -208,6 +220,20 @@ class FogBugz
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     return_value = list_process(result,"fixfor","sFixFor")
     return_value[return_value.keys[0]]
+  end
+  
+  # Creates a new FixFor within FogBugz.
+  #
+  # * sFixFor: Title for the new FixFor
+  # * fAssignable: Can cases be assigned to this FixFor?  true/false  Default is true.
+  # * ixProject: ID of the project this FixFor belongs to.  If -1 (which is default when not specified) this will be a global FixFor.
+  # * dtRelease: Release date for the new FixFor.  If not passed, no release date will be set.  Expecting DateTime class if value is passed.
+  def new_fix_for(sFixFor,fAssignable=true,ixProject=-1,dtRelease=nil)
+    return nil if dtRelease and dtRelease.class != DateTime
+    cmd = {"cmd" => "newFixFor","token"=>@token,"sFixFor"=>sFixFor,"fAssignable"=>(fAssignable) ? "1" : "0","ixProject"=>ixProject.to_s}
+    cmd = {"dtRelease"=>dtRelease}.merge(cmd) if dtRelease
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return (result/"ixFixFor").inner_html.to_i        
   end
 
   def categories
@@ -281,6 +307,18 @@ class FogBugz
     return_value = list_process(result,"person","sFullName")
     return_value[return_value.keys[0]]
   end
+  
+  # Creates a new Person within FogBugz.
+  #
+  # * sEmail: Email address of the new Person.
+  # * sFullname: Fullname of the new Person.
+  # * nType: Type for the new user.  0 = Normal User, 1 = Administrator, 2 = Community User, 3 = Virtual User
+  # * fActive: Is the new Person active? true/false
+  def new_person(sEmail,sFullname,nType,fActive=true)
+    cmd = {"cmd" => "newPerson", "token" => @token, "sEmail" => sEmail.to_s, "sFullname" => sFullname.to_s, "nType" => nType.to_s, "fActive" => (fActive) ? "1" : "0"}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return (result/"ixPerson").inner_html.to_i        
+  end
 
   # Returns a list of statuses for a particular category.
   #
@@ -319,6 +357,18 @@ class FogBugz
     # usually lists were keyed w/ a name field.  Mailboxes just
     # weren't working for me so I'm going with ixMailbox value
     return list_process(result,"mailbox","ixMailbox")
+  end
+
+  # Returns details about a specific mailbox
+  #
+  # * ixMailbox: The id of the Mailbox to view
+  # 
+  # Value returned is a Hash containing all properties of the located Mailbox.  nil is returned for unsuccessful search.    
+  def mailbox(ixMailbox)
+    cmd = {"cmd" => "viewMailbox", "token" => @token, "ixMailbox" => ixMailbox.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value = list_process(result,"mailbox","ixMailbox")
+    return_value[return_value.keys[0]]    
   end
 
   # Searches for FogBugz cases
