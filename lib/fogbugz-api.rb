@@ -27,6 +27,29 @@ class FogBugz
     dtLastUpdated fReplied fForwarded sTicket ixDiscussTopic dtDue sReleaseNotes
     ixBugEventLastView dtLastView ixRelatedBugs sScoutDescription sScoutMessage
     fScoutStopReporting fSubscribed events)
+  
+  ERROR_CODES = {"0"=>"FogBugz not initialized.  Database may be down or needs to be upgraded",
+                 "1"=>"Log On problem - Incorrect Username or Password",
+                 "2"=>"Log On problem - multiple matches for username",
+                 "3"=>"You are not logged on.",
+                 "4"=>"Argument is missing from query",
+                 "5"=>"Edit problem - the case you are trying to edit could not be found",
+                 "6"=>"Edit problem - the action you are trying to perform on this case is not permitted",
+                 "7"=>"Time tracking problem - you can't add a time interval to this case because the case can't be found, is closed, has no estimate, or you don't have permission",
+                 "8"=>"New case problem - you can't write to any project",
+                 "9"=>"Case has changed since last view",
+                 "10"=>"Search problem - an error occurred in search.",
+                 "12"=>"Wiki creation problem",
+                 "13"=>"Wiki permission problem",
+                 "14"=>"Wiki load error",
+                 "15"=>"Wiki template error",
+                 "16"=>"Wiki commit error",
+                 "17"=>"No such project",
+                 "18"=>"No such user",
+                 "19"=>"Area creation problem",
+                 "20"=>"FixFor creation problem",
+                 "21"=>"Project creation problem",
+                 "22"=>"User creation problem"}
 
   attr_reader :url, :token, :use_ssl, :api_version, :api_minversion, :api_url
 
@@ -409,11 +432,112 @@ class FogBugz
   def new_case(params, cols=CASE_COLUMNS)
     case_process("new",params,cols)
   end
+  
+  # Returns information about a specific Person's working schedule
+  #
+  # * ixPerson: ID of the person to list working schedule.  If omitted currently logged in person is listed.
+  def working_schedule(ixPerson=nil)
+    cmd = {"cmd"=>"listWorkingSchedule","token"=>@token}
+    cmd = {"ixPerson"=>ixPerson.to_s}.merge(cmd) if ixPerson
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    return_value = list_process(result,"workingSchedule","ixPerson")
+    return_value = return_value[return_value.keys[0]] 
+    Hpricot.XML(return_value["rgWorkDays"]).each_child do |e|
+        return_value[e.name] = (e.inner_html == "true" ? true : false) if e.class == Hpricot::Elem
+    end
+    return_value
+  end
 
+  # start working on this case and charge time to it (start the stopwatch)
+  #
+  # * ixBug: ID of the case you want to start working on  
+  def start_work(ixBug)
+    cmd = {"cmd"=>"startWork","token"=>@token,"ixBug"=>ixBug.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+  end
+  
+  # stop working on everything (stop the stopwatch)
+  def stop_work
+    cmd = {"cmd"=>"stopWork","token"=>@token}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+  end
+  
+  # list all of the checkins that have been associated with the specified case
+  def checkins(ixBug)
+    cmd = {"cmd"=>"listCheckins","token"=>@token,"ixBug"=>ixBug.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    list_process(result,"checkin","ixCVS")
+  end
+  
+  # list all wikis in FogBugz
+  def wikis
+    cmd = {"cmd"=>"listWikis","token"=>@token}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    list_process(result,"wiki","ixWiki")
+  end
+  
+  # list all articles in a specified wiki
+  #
+  # ixWiki: ID of the wiki to list articles
+  def articles(ixWiki)
+    cmd = {"cmd"=>"listArticles","token"=>@token,"ixWiki"=>ixWiki.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    list_process(result,"article","ixWikiPage")
+  end
+  
+  # list revisions of a specific wiki page
+  # ixWikiPage: ID of the wiki page to list revisions.
+  def revisions(ixWikiPage)
+    cmd = {"cmd"=>"listRevisions","token"=>@token,"ixWikiPage"=>ixWikiPage.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    list_process(result,"revision","nRevision")    
+  end
+  
+  # list wiki templates
+  def templates
+    cmd = {"cmd"=>"listTemplates","token"=>@token}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    list_process(result,"template","ixTemplate")        
+  end
+  
+  # lists all readable discussion groups
+  def discussion_groups
+    cmd = {"cmd"=>"listDiscussGroups","token"=>@token}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    list_process(result,"discussion","ixDiscussGroup")          
+  end
+  
+  # get back info on this person such as their timezone offset, preferred columns, etc..
+  def settings
+    cmd = {"cmd"=>"viewSettings","token"=>@token,"ixPerson"=>"4"}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    return_value = Hash.new
+    (result/"settings")[0].each_child do |e|
+      if e.inner_html =~ CDATA_REGEXP
+        return_value[e.name] = CDATA_REGEXP.match(e.inner_html)[1]
+      else
+        return_value[e.name] = e.inner_html
+      end
+    end
+    return_value
+  end
+  
   protected
 
   CDATA_REGEXP = /<!\[CDATA\[(.*?)\]\]>/
 
+  def fogbugz_error?(xml)
+  
+  end
   # Makes connection to the FogBugz server
   #
   # Assumes port 443 for SSL connections and 80 for non-SSL connections.
@@ -499,12 +623,13 @@ class FogBugz
       return_value[item_name] = Hash.new
 
       item.each_child do |attribute|
-        return_value[item_name][attribute.name] = attribute.inner_html
-        # convert values to proper types
-        return_value[item_name][attribute.name] = CDATA_REGEXP.match(attribute.inner_html)[1] if (attribute.name[0,1] == "s" or attribute.name[0,3] == "evt") and attribute.inner_html != "" and CDATA_REGEXP.match(attribute.inner_html) != nil
-        return_value[item_name][attribute.name] = return_value[item_name][attribute.name].to_i if (attribute.name[0,2] == "ix" or attribute.name[0,1] == "n")
-        return_value[item_name][attribute.name] = (return_value[item_name][attribute.name] == "true") ? true : false if attribute.name[0,1] == "f"
-
+        if attribute.class != Hpricot::Text
+          return_value[item_name][attribute.name] = attribute.inner_html
+          # convert values to proper types
+          return_value[item_name][attribute.name] = CDATA_REGEXP.match(attribute.inner_html)[1] if (attribute.name[0,1] == "s" or attribute.name[0,3] == "evt") and attribute.inner_html != "" and CDATA_REGEXP.match(attribute.inner_html) != nil
+          return_value[item_name][attribute.name] = return_value[item_name][attribute.name].to_i if (attribute.name[0,2] == "ix" or attribute.name[0,1] == "n")
+          return_value[item_name][attribute.name] = (return_value[item_name][attribute.name] == "true") ? true : false if attribute.name[0,1] == "f"
+        end
       end
     end
 
