@@ -1,3 +1,4 @@
+# TODO - remove require of rubygems?
 require 'rubygems' rescue nil
 require 'hpricot'
 require 'net/https'
@@ -488,6 +489,16 @@ class FogBugz
     result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
     raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
     list_process(result,"article","ixWikiPage")
+  end
+  
+  # view contents of a specific wiki article
+  # TODO - add ability to specify page revision
+  def article(ixWikiPage)
+    cmd = {"cmd"=>"viewArticle","token"=>@token,"ixWikiPage"=>ixWikiPage.to_s}
+    result = Hpricot.XML(@connection.post(@api_url,to_params(cmd)).body)
+    raise FogBugzError, "Code: #{(result/"error")[0]["code"]} - #{(result/"error").inner_html}" if (result/"error").inner_html != ""
+    return_value = list_process(result,"wikipage","sBody")
+    return_value[return_value.keys[0]]
   end
   
   # list revisions of a specific wiki page
