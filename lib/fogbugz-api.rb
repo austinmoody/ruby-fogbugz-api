@@ -73,7 +73,7 @@ class FogBugz
   #
   def initialize(url,use_ssl=false,token=nil)
     @url = url
-    @use_ssl = use_ssl
+    @use_ssl = parse_ssl(use_ssl)
     connect
 
     # Attempt to grap api.xml file from the server specified by url.  Will let
@@ -557,6 +557,15 @@ class FogBugz
     @connection = Net::HTTP.new(@url, @use_ssl ? 443 : 80) 
     @connection.use_ssl = @use_ssl
     @connection.verify_mode = OpenSSL::SSL::VERIFY_NONE if @use_ssl
+  end
+
+  # make sure ssl input isn't a string
+  def parse_ssl(ssl)
+    if ssl.class == String
+      ssl.upcase == "TRUE" ? true : false
+     else
+       ssl
+    end
   end
 
   def case_process(cmd,params,cols)
